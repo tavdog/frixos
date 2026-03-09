@@ -1392,7 +1392,7 @@ void display_task(void *pvParameters)
         lvgl_port_lock(0);
         if (img_logo)
         {
-          lv_obj_del(img_logo);
+          lv_obj_delete_async(img_logo);
           img_logo = NULL;
         }
 

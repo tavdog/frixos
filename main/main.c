@@ -26,6 +26,7 @@
 #include "f-ota.h"
 #include "f-provisioning.h"
 #include "f-integrations.h"
+#include "f-membuffer.h"
 
 #include "libs/fsdrv/lv_fsdrv.h"
 
@@ -37,7 +38,8 @@
 const char app[10] = "Frixos";
 const char version[10] = "2.12beta";
 static const char *TAG = "frixos main"; // in case we use ESP_LOGE -rror/W-arning/I-info (also D-ebug/V-erbose)
-const int fwversion = 63 ;
+const int fwversion = 63;
+const int rescuemode = 0; // 0 = normal, 1 = rescue mode
 const char revision[] = "E";
 
 // Mutex for HTTP operations
@@ -59,8 +61,8 @@ LV_FONT_DECLARE(lv_font_montserrat_14);
 char eeprom_hostname[33] = "frixos";
 char eeprom_wifi_ssid[33] = "";
 char eeprom_wifi_pass[64] = "";
-uint8_t eeprom_wifi_start = 0;  // WiFi Active Hours Start (0-23), default 0
-uint8_t eeprom_wifi_end = 0;    // WiFi Active Hours End (0-23), default 0
+uint8_t eeprom_wifi_start = 0;                                     // WiFi Active Hours Start (0-23), default 0
+uint8_t eeprom_wifi_end = 0;                                       // WiFi Active Hours End (0-23), default 0
 char eeprom_lat[12] = "", my_lat[12] = "";                         // "48.123456";
 char eeprom_lon[12] = "", my_lon[12] = "";                         // "16.123456";
 char eeprom_timezone[TZ_LENGTH] = "", my_timezone[TZ_LENGTH] = ""; // EET-2EEST,M3.5.0/3,M10.5.0/4";
@@ -102,12 +104,12 @@ char eeprom_stock_key[64] = {0};
 uint16_t eeprom_stock_refresh_mins = 5;
 
 // Dexcom settings
-uint8_t eeprom_dexcom_region = 0; // 0=disabled, 1=US, 2=Japan, 3=Rest of World
-uint16_t eeprom_glucose_high = 175;  // Default high threshold in mg/dL
-uint16_t eeprom_glucose_low = 70;    // Default low threshold in mg/dL
-uint8_t eeprom_glucose_unit = 0;     // Glucose display unit: 0=mg/dL, 1=mmol/L
-uint16_t eeprom_pwm_frequency = 200; // Default PWM frequency in Hz (range 10-5000)
-uint16_t eeprom_max_power = MAX_DUTY;   // Default max power (range 1-1023)
+uint8_t eeprom_dexcom_region = 0;     // 0=disabled, 1=US, 2=Japan, 3=Rest of World
+uint16_t eeprom_glucose_high = 175;   // Default high threshold in mg/dL
+uint16_t eeprom_glucose_low = 70;     // Default low threshold in mg/dL
+uint8_t eeprom_glucose_unit = 0;      // Glucose display unit: 0=mg/dL, 1=mmol/L
+uint16_t eeprom_pwm_frequency = 200;  // Default PWM frequency in Hz (range 10-5000)
+uint16_t eeprom_max_power = MAX_DUTY; // Default max power (range 1-1023)
 
 // LibreLinkUp settings
 uint8_t eeprom_libre_region = 0; // 0=disabled, 1=US, 2=Japan, 3=Rest of World
@@ -115,15 +117,15 @@ uint8_t eeprom_libre_region = 0; // 0=disabled, 1=US, 2=Japan, 3=Rest of World
 // Shared glucose monitoring settings (used by both Dexcom and Libre)
 char eeprom_glucose_username[64] = {0};
 char eeprom_glucose_password[64] = {0};
-uint8_t eeprom_glucose_refresh = 5;  // Default to 5 minutes
-uint16_t glucose_validity_duration = 60;  // Default to 60 minutes
-uint8_t eeprom_sec_time = 25;  // Alternate time display duration (0-120 seconds)
-uint8_t eeprom_sec_cgm = 5;  // Alternate CGM display duration (0-120 seconds)
+uint8_t eeprom_glucose_refresh = 5;      // Default to 5 minutes
+uint16_t glucose_validity_duration = 60; // Default to 60 minutes
+uint8_t eeprom_sec_time = 25;            // Alternate time display duration (0-120 seconds)
+uint8_t eeprom_sec_cgm = 5;              // Alternate CGM display duration (0-120 seconds)
 char eeprom_libre_patient_id[64] = {0};
 char eeprom_libre_token[512] = {0};
 char libre_account_id[64] = {0};
 char eeprom_libre_region_url[128] = {0};
-char eeprom_ns_url[101] = {0};  // Nightscout URL (max 100 chars), NVS key ns_url
+char eeprom_ns_url[101] = {0}; // Nightscout URL (max 100 chars), NVS key ns_url
 
 // Unified glucose data storage (shared by both Dexcom and Freestyle)
 glucose_data_t glucose_data = {0};
@@ -395,13 +397,8 @@ void startup_read_eeprom(void)
   }
   else
   {
-    // Read string values (with logging for errors other than NOT_FOUND)
-    size_t size = sizeof(eeprom_hostname);
-    err = nvs_get_str(nvs_handle, "hostname", eeprom_hostname, &size);
-    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
-      ESP_LOG_WEB(ESP_LOG_WARN, TAG, "NVS Read Error hostname: %s", esp_err_to_name(err));
 
-    size = sizeof(eeprom_wifi_ssid);
+    size_t size = sizeof(eeprom_wifi_ssid);
     err = nvs_get_str(nvs_handle, "wifi_ssid", eeprom_wifi_ssid, &size);
     if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
       ESP_LOG_WEB(ESP_LOG_WARN, TAG, "NVS Read Error wifi_ssid: %s", esp_err_to_name(err));
@@ -410,6 +407,21 @@ void startup_read_eeprom(void)
     err = nvs_get_str(nvs_handle, "wifi_pass", eeprom_wifi_pass, &size);
     if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
       ESP_LOG_WEB(ESP_LOG_WARN, TAG, "NVS Read Error wifi_pass: %s", esp_err_to_name(err));
+
+    // if rescue mode, read only SSID and password
+    if (rescuemode == 1)
+    {
+      // save all default values back to eeprom
+      nvs_close(nvs_handle);
+      write_nvs_parameters();
+      return;
+    }
+      
+    // Read string values (with logging for errors other than NOT_FOUND)
+    size = sizeof(eeprom_hostname);
+    err = nvs_get_str(nvs_handle, "hostname", eeprom_hostname, &size);
+    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
+      ESP_LOG_WEB(ESP_LOG_WARN, TAG, "NVS Read Error hostname: %s", esp_err_to_name(err));
 
     size = sizeof(eeprom_lat);
     err = nvs_get_str(nvs_handle, "latitude", eeprom_lat, &size);
@@ -663,7 +675,7 @@ void startup_read_eeprom(void)
     err = nvs_get_u16(nvs_handle, "pwm_frequency", &eeprom_pwm_frequency);
     if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
       ESP_LOG_WEB(ESP_LOG_WARN, TAG, "NVS Read Error pwm_frequency: %s", esp_err_to_name(err));
-    
+
     err = nvs_get_u16(nvs_handle, "max_power", &eeprom_max_power);
     if (eeprom_max_power == 850) // reduce all 850 limit to 750
     {
@@ -673,7 +685,7 @@ void startup_read_eeprom(void)
 
     if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
       ESP_LOG_WEB(ESP_LOG_WARN, TAG, "NVS Read Error max_power: %s", esp_err_to_name(err));
-    
+
     // Read Power On Hours
     err = nvs_get_u32(nvs_handle, "poh", &eeprom_poh);
     if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
@@ -972,7 +984,6 @@ esp_err_t write_nvs_parameters(void)
   if (err != ESP_OK)
     ESP_LOG_WEB(ESP_LOG_ERROR, TAG, "NVS Write Error scroll_delay: %s", esp_err_to_name(err));
 
-
   err = nvs_set_u8(nvs_handle, "language", eeprom_language);
   if (err != ESP_OK)
     ESP_LOG_WEB(ESP_LOG_ERROR, TAG, "NVS Write Error language: %s", esp_err_to_name(err));
@@ -1062,7 +1073,8 @@ void startup_ltr303(void)
 // OTA progress callback function
 void ota_progress_callback(int progress, const char *message)
 {
-  ESP_LOG_WEB(ESP_LOG_INFO, TAG, "OTA Progress: %d%% - %s", progress, message);
+  // don't really care to have any updates; this feels superfluous anyway, should kill it at some point
+  // ESP_LOG_WEB(ESP_LOG_INFO, TAG, "OTA Progress: %d%% - %s", progress, message);
 }
 
 // POH timer callback function - called every hour
@@ -1215,13 +1227,17 @@ void app_main(void)
 
   ESP_LOGI(TAG, "Free heap after weblog init: %lu bytes", esp_get_free_heap_size());
 
+  init_buffer_management();
+  ESP_LOGI(TAG, "Buffer management initialized successfully");
+  ESP_LOGI(TAG, "Free heap after buffer management init: %lu bytes", esp_get_free_heap_size());
+
   // Initialize the default event loop
   ESP_ERROR_CHECK(esp_event_loop_create_default());
 
   http_mutex = xSemaphoreCreateMutex(); // create a mutex for "important" http operations
 
   startup_diags();
-  
+
   startup_read_eeprom();
   startup_ltr303();
   startup_lcd();
@@ -1238,5 +1254,4 @@ void app_main(void)
   vTaskDelay(pdMS_TO_TICKS(4000));                    // Wait 4 seconds for tasks to initialize
   startup_led_pwm();
   ESP_LOG_WEB(ESP_LOG_INFO, TAG, "Startup complete");
-  
 }

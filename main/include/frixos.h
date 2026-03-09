@@ -215,7 +215,7 @@ extern char boot_ip_address[18];
 #define I2C_MASTER_FREQ_HZ  (100*1000) // 100 kHz
 
 
-#define DEFAULT_LOG_BUFFER_SIZE 1024  // Reduced from 2048 to free ~1KB heap for SSL connections
+#define DEFAULT_LOG_BUFFER_SIZE 2048  // log buffer for web UI
 
 
 #define MAX_AP_SCAN 30 // Maximum number of APs to scan and display
