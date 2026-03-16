@@ -2033,23 +2033,28 @@ void init_char_width_cache(const lv_font_t *font)
 
   ESP_LOG_WEB(ESP_LOG_INFO, TAG, "Char width cache init");
 
-  // Clear the cache
-  memset(char_width_cache, 0, sizeof(char_width_cache));
+  // Clear the cache (initialize with -1 to indicate empty, as 0 is a valid code point but not really used for widths)
+  // Actually code_point 0 is space in many mappings, so let's use 0xFFFFFFFF for empty
+  for (int i = 0; i < CACHE_SIZE; i++) {
+    char_width_cache[i].code_point = 0xFFFFFFFF;
+    char_width_cache[i].width = 0;
+  }
 
-  // Pre-calculate width for ASCII characters (0-127) and common Unicode characters
+  // Pre-calculate width for ASCII characters (0-127)
   for (int i = 0; i < 128; i++)
   {
-    uint32_t letter_next = (i + 1 < 128) ? (i + 1) : '\0';
     int cache_index = i % CACHE_SIZE;
     char_width_cache[cache_index].code_point = i;
-    char_width_cache[cache_index].width = (uint8_t)lv_font_get_glyph_width(font, i, letter_next);
+    // We ignore kerning (letter_next) to keep cache hits consistent.
+    // Frixos fonts currently don't use kerning tables.
+    char_width_cache[cache_index].width = (uint8_t)lv_font_get_glyph_width(font, i, '\0');
   }
 
   // Cache common Unicode characters
   uint32_t common_chars[] = {0xB0, 0x00A0, 0x00A1, 0x00A2, 0x00A3, 0x00A4, 0x00A5, 0x00A6, 0x00A7, 0x00A8, 0x00A9, 0x00AA, 0x00AB, 0x00AC, 0x00AD, 0x00AE, 0x00AF};
   for (int i = 0; i < sizeof(common_chars) / sizeof(common_chars[0]); i++)
   {
-    int cache_index = (128 + i) % CACHE_SIZE;
+    int cache_index = common_chars[i] % CACHE_SIZE;
     char_width_cache[cache_index].code_point = common_chars[i];
     char_width_cache[cache_index].width = (uint8_t)lv_font_get_glyph_width(font, common_chars[i], '\0');
   }
@@ -2061,64 +2066,35 @@ void init_char_width_cache(const lv_font_t *font)
 }
 
 // Function to get cached character width for Unicode code points
+// Optimized with O(1) hash-style lookup to reduce CPU usage during scrolling message measurement.
 static uint8_t get_cached_char_width(uint32_t code_point, const lv_font_t *font, const char *text, int text_pos)
 {
+  (void)text;
+  (void)text_pos;
+
   if (!cache_valid)
   {
     ESP_LOG_WEB(ESP_LOG_WARN, TAG, "get_cached_char_width: not init");
     return 0;
   }
 
-  // Search for the code point in the cache
-  uint8_t cached_width = 0;
-  bool found = false;
+  // O(1) Lookup: Use modulo for direct indexing. Handle collisions by simple replacement.
+  int cache_index = code_point % CACHE_SIZE;
 
-  for (int i = 0; i < CACHE_SIZE; i++)
+  if (char_width_cache[cache_index].code_point == code_point)
   {
-    if (char_width_cache[i].code_point == code_point)
-    {
-      cached_width = char_width_cache[i].width;
-      found = true;
-      break;
-    }
+    return char_width_cache[cache_index].width;
   }
 
-  // If not found in cache, calculate and cache it
-  if (!found)
-  {
-    uint32_t letter_next = (text_pos + 1 < strlen(text)) ? (uint8_t)text[text_pos + 1] : '\0';
-    cached_width = (uint8_t)lv_font_get_glyph_width(font, code_point, letter_next);
+  // Cache miss: calculate, store and return.
+  // We ignore kerning (letter_next) to keep cache hits consistent and avoid O(L^2) complexity from strlen/scans.
+  // Frixos fonts currently don't use kerning tables.
+  uint8_t width = (uint8_t)lv_font_get_glyph_width(font, code_point, '\0');
 
-    // Find an empty slot or replace the least recently used entry
-    int cache_index = 0;
-    for (int i = 0; i < CACHE_SIZE; i++)
-    {
-      if (char_width_cache[i].code_point == 0)
-      {
-        cache_index = i;
-        break;
-      }
-    }
+  char_width_cache[cache_index].code_point = code_point;
+  char_width_cache[cache_index].width = width;
 
-    char_width_cache[cache_index].code_point = code_point;
-    char_width_cache[cache_index].width = cached_width;
-  }
-
-  // For degree symbol and other special characters, double-check with direct font lookup
-  if (code_point == 0xB0 || code_point > 127)
-  {
-    uint32_t letter_next = (text_pos + 1 < strlen(text)) ? (uint8_t)text[text_pos + 1] : '\0';
-    uint8_t direct_width = (uint8_t)lv_font_get_glyph_width(font, code_point, letter_next);
-
-    if (cached_width != direct_width)
-    {
-      ESP_LOG_WEB(ESP_LOG_WARN, TAG, "Char width mismatch 0x%04X: cached=%d direct=%d",
-                  code_point, cached_width, direct_width);
-      return direct_width; // Use the direct calculation
-    }
-  }
-
-  return cached_width;
+  return width;
 }
 
 // Function to invalidate the cache (call when font changes)
