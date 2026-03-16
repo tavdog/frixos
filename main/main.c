@@ -61,17 +61,18 @@ SemaphoreHandle_t http_mutex = NULL;
 #define EEPROM_SIG_1 0xF0              // As mentioned in comments
 #define EEPROM_NAMESPACE "frixos"      // Define the NEW NVS namespace
 
+/* Local setting types - avoid conflict with ESP-IDF nvs_type_t (NVS_TYPE_*) */
 typedef enum {
-    NVS_TYPE_STR,
-    NVS_TYPE_U8,
-    NVS_TYPE_U16,
-    NVS_TYPE_U32,
-    NVS_TYPE_BLOB  // For float, arrays, etc.
-} nvs_type_t;
+    SETTING_TYPE_STR,
+    SETTING_TYPE_U8,
+    SETTING_TYPE_U16,
+    SETTING_TYPE_U32,
+    SETTING_TYPE_BLOB
+} setting_type_t;
 
 typedef struct {
     const char *key;
-    nvs_type_t type;
+    setting_type_t type;
     void *ptr;
     size_t size;  // Used for string max length or blob size
 } nvs_setting_t;
@@ -119,66 +120,66 @@ uint8_t eeprom_scroll_delay = 65;   // Default scroll delay in milliseconds (30-
 char eeprom_message[SCROLL_MSG_LENGTH] = "[device]: [greeting] [day], [date] [mon], now [temp] today [high]-[low], hum. [hum], sun [rise]-[set]";
 
 static const nvs_setting_t settings_table[] = {
-    {"wifi_ssid", NVS_TYPE_STR, eeprom_wifi_ssid, sizeof(eeprom_wifi_ssid)},
-    {"wifi_pass", NVS_TYPE_STR, eeprom_wifi_pass, sizeof(eeprom_wifi_pass)},
-    {"hostname", NVS_TYPE_STR, eeprom_hostname, sizeof(eeprom_hostname)},
-    {"latitude", NVS_TYPE_STR, eeprom_lat, sizeof(eeprom_lat)},
-    {"longitude", NVS_TYPE_STR, eeprom_lon, sizeof(eeprom_lon)},
-    {"timezone", NVS_TYPE_STR, eeprom_timezone, sizeof(eeprom_timezone)},
-    {"dayfont", NVS_TYPE_STR, eeprom_font[0], sizeof(eeprom_font[0])},
-    {"nightfont", NVS_TYPE_STR, eeprom_font[1], sizeof(eeprom_font[1])},
-    {"dim_disable", NVS_TYPE_U8, &eeprom_dim_disable, 0},
-    {"fahrenheit", NVS_TYPE_U8, &eeprom_fahrenheit, 0},
-    {"12hour", NVS_TYPE_U8, &eeprom_12hour, 0},
-    {"wifi_start", NVS_TYPE_U8, &eeprom_wifi_start, 0},
-    {"wifi_end", NVS_TYPE_U8, &eeprom_wifi_end, 0},
-    {"quiet_scroll", NVS_TYPE_U8, &eeprom_quiet_scroll, 0},
-    {"quiet_weather", NVS_TYPE_U8, &eeprom_quiet_weather, 0},
-    {"lead_zero", NVS_TYPE_U8, &eeprom_show_leading_zero, 0},
-    {"dots_breathe", NVS_TYPE_U8, &eeprom_dots_breathe, 0},
-    {"color_filter", NVS_TYPE_U8, &eeprom_color_filter[0], 0},
-    {"msg_red", NVS_TYPE_U8, &eeprom_msg_red[0], 0},
-    {"msg_green", NVS_TYPE_U8, &eeprom_msg_green[0], 0},
-    {"msg_blue", NVS_TYPE_U8, &eeprom_msg_blue[0], 0},
-    {"night_filter", NVS_TYPE_U8, &eeprom_color_filter[1], 0},
-    {"night_msg_red", NVS_TYPE_U8, &eeprom_msg_red[1], 0},
-    {"night_msg_green", NVS_TYPE_U8, &eeprom_msg_green[1], 0},
-    {"night_msg_blue", NVS_TYPE_U8, &eeprom_msg_blue[1], 0},
-    {"msg_font", NVS_TYPE_U8, &eeprom_msg_font, 0},
-    {"offset_x", NVS_TYPE_U8, &eeprom_ofs_x, 0},
-    {"offset_y", NVS_TYPE_U8, &eeprom_ofs_y, 0},
-    {"rotation", NVS_TYPE_U8, &eeprom_rotation, 0},
-    {"mirroring", NVS_TYPE_U8, &eeprom_mirroring, 0},
-    {"show_grid", NVS_TYPE_U8, &eeprom_show_grid, 0},
-    {"update_firm", NVS_TYPE_U8, &eeprom_update_firmware, 0},
-    {"dark_theme", NVS_TYPE_U8, &eeprom_dark_theme, 0},
-    {"scroll_speed", NVS_TYPE_U8, &eeprom_scroll_speed, 0},
-    {"scroll_delay", NVS_TYPE_U8, &eeprom_scroll_delay, 0},
-    {"language", NVS_TYPE_U8, &eeprom_language, 0},
-    {"brightness", NVS_TYPE_BLOB, eeprom_brightness_LED, sizeof(eeprom_brightness_LED)},
-    {"lux_sens", NVS_TYPE_BLOB, &eeprom_lux_sensitivity, sizeof(eeprom_lux_sensitivity)},
-    {"lux_thresh", NVS_TYPE_BLOB, &eeprom_lux_threshold, sizeof(eeprom_lux_threshold)},
-    {"message", NVS_TYPE_STR, eeprom_message, sizeof(eeprom_message)},
-    {"ha_url", NVS_TYPE_STR, eeprom_ha_url, sizeof(eeprom_ha_url)},
-    {"ha_token", NVS_TYPE_STR, eeprom_ha_token, sizeof(eeprom_ha_token)},
-    {"ha_refresh", NVS_TYPE_U16, &eeprom_ha_refresh_mins, 0},
-    {"stock_key", NVS_TYPE_STR, eeprom_stock_key, sizeof(eeprom_stock_key)},
-    {"stock_refresh", NVS_TYPE_U16, &eeprom_stock_refresh_mins, 0},
-    {"dexcom_region", NVS_TYPE_U8, &eeprom_dexcom_region, 0},
-    {"glucose_high", NVS_TYPE_U16, &eeprom_glucose_high, 0},
-    {"glucose_low", NVS_TYPE_U16, &eeprom_glucose_low, 0},
-    {"libre_region", NVS_TYPE_U8, &eeprom_libre_region, 0},
-    {"ns_url", NVS_TYPE_STR, eeprom_ns_url, sizeof(eeprom_ns_url)},
-    {"cgm_username", NVS_TYPE_STR, eeprom_glucose_username, sizeof(eeprom_glucose_username)},
-    {"cgm_password", NVS_TYPE_STR, eeprom_glucose_password, sizeof(eeprom_glucose_password)},
-    {"cgm_refresh", NVS_TYPE_U8, &eeprom_glucose_refresh, 0},
-    {"cgm_validity", NVS_TYPE_U16, &glucose_validity_duration, 0},
-    {"sec_time", NVS_TYPE_U8, &eeprom_sec_time, 0},
-    {"sec_cgm", NVS_TYPE_U8, &eeprom_sec_cgm, 0},
-    {"cgm_unit", NVS_TYPE_U8, &eeprom_glucose_unit, 0},
-    {"pwm_frequency", NVS_TYPE_U32, &eeprom_pwm_frequency, 0},
-    {"max_power", NVS_TYPE_U16, &eeprom_max_power, 0},
-    {"poh", NVS_TYPE_U32, &eeprom_poh, 0},
+    {"wifi_ssid", SETTING_TYPE_STR, eeprom_wifi_ssid, sizeof(eeprom_wifi_ssid)},
+    {"wifi_pass", SETTING_TYPE_STR, eeprom_wifi_pass, sizeof(eeprom_wifi_pass)},
+    {"hostname", SETTING_TYPE_STR, eeprom_hostname, sizeof(eeprom_hostname)},
+    {"latitude", SETTING_TYPE_STR, eeprom_lat, sizeof(eeprom_lat)},
+    {"longitude", SETTING_TYPE_STR, eeprom_lon, sizeof(eeprom_lon)},
+    {"timezone", SETTING_TYPE_STR, eeprom_timezone, sizeof(eeprom_timezone)},
+    {"dayfont", SETTING_TYPE_STR, eeprom_font[0], sizeof(eeprom_font[0])},
+    {"nightfont", SETTING_TYPE_STR, eeprom_font[1], sizeof(eeprom_font[1])},
+    {"dim_disable", SETTING_TYPE_U8, &eeprom_dim_disable, 0},
+    {"fahrenheit", SETTING_TYPE_U8, &eeprom_fahrenheit, 0},
+    {"12hour", SETTING_TYPE_U8, &eeprom_12hour, 0},
+    {"wifi_start", SETTING_TYPE_U8, &eeprom_wifi_start, 0},
+    {"wifi_end", SETTING_TYPE_U8, &eeprom_wifi_end, 0},
+    {"quiet_scroll", SETTING_TYPE_U8, &eeprom_quiet_scroll, 0},
+    {"quiet_weather", SETTING_TYPE_U8, &eeprom_quiet_weather, 0},
+    {"lead_zero", SETTING_TYPE_U8, &eeprom_show_leading_zero, 0},
+    {"dots_breathe", SETTING_TYPE_U8, &eeprom_dots_breathe, 0},
+    {"color_filter", SETTING_TYPE_U8, &eeprom_color_filter[0], 0},
+    {"msg_red", SETTING_TYPE_U8, &eeprom_msg_red[0], 0},
+    {"msg_green", SETTING_TYPE_U8, &eeprom_msg_green[0], 0},
+    {"msg_blue", SETTING_TYPE_U8, &eeprom_msg_blue[0], 0},
+    {"night_filter", SETTING_TYPE_U8, &eeprom_color_filter[1], 0},
+    {"night_msg_red", SETTING_TYPE_U8, &eeprom_msg_red[1], 0},
+    {"night_msg_green", SETTING_TYPE_U8, &eeprom_msg_green[1], 0},
+    {"night_msg_blue", SETTING_TYPE_U8, &eeprom_msg_blue[1], 0},
+    {"msg_font", SETTING_TYPE_U8, &eeprom_msg_font, 0},
+    {"offset_x", SETTING_TYPE_U8, &eeprom_ofs_x, 0},
+    {"offset_y", SETTING_TYPE_U8, &eeprom_ofs_y, 0},
+    {"rotation", SETTING_TYPE_U8, &eeprom_rotation, 0},
+    {"mirroring", SETTING_TYPE_U8, &eeprom_mirroring, 0},
+    {"show_grid", SETTING_TYPE_U8, &eeprom_show_grid, 0},
+    {"update_firm", SETTING_TYPE_U8, &eeprom_update_firmware, 0},
+    {"dark_theme", SETTING_TYPE_U8, &eeprom_dark_theme, 0},
+    {"scroll_speed", SETTING_TYPE_U8, &eeprom_scroll_speed, 0},
+    {"scroll_delay", SETTING_TYPE_U8, &eeprom_scroll_delay, 0},
+    {"language", SETTING_TYPE_U8, &eeprom_language, 0},
+    {"brightness", SETTING_TYPE_BLOB, eeprom_brightness_LED, sizeof(eeprom_brightness_LED)},
+    {"lux_sens", SETTING_TYPE_BLOB, &eeprom_lux_sensitivity, sizeof(eeprom_lux_sensitivity)},
+    {"lux_thresh", SETTING_TYPE_BLOB, &eeprom_lux_threshold, sizeof(eeprom_lux_threshold)},
+    {"message", SETTING_TYPE_STR, eeprom_message, sizeof(eeprom_message)},
+    {"ha_url", SETTING_TYPE_STR, eeprom_ha_url, sizeof(eeprom_ha_url)},
+    {"ha_token", SETTING_TYPE_STR, eeprom_ha_token, sizeof(eeprom_ha_token)},
+    {"ha_refresh", SETTING_TYPE_U16, &eeprom_ha_refresh_mins, 0},
+    {"stock_key", SETTING_TYPE_STR, eeprom_stock_key, sizeof(eeprom_stock_key)},
+    {"stock_refresh", SETTING_TYPE_U16, &eeprom_stock_refresh_mins, 0},
+    {"dexcom_region", SETTING_TYPE_U8, &eeprom_dexcom_region, 0},
+    {"glucose_high", SETTING_TYPE_U16, &eeprom_glucose_high, 0},
+    {"glucose_low", SETTING_TYPE_U16, &eeprom_glucose_low, 0},
+    {"libre_region", SETTING_TYPE_U8, &eeprom_libre_region, 0},
+    {"ns_url", SETTING_TYPE_STR, eeprom_ns_url, sizeof(eeprom_ns_url)},
+    {"cgm_username", SETTING_TYPE_STR, eeprom_glucose_username, sizeof(eeprom_glucose_username)},
+    {"cgm_password", SETTING_TYPE_STR, eeprom_glucose_password, sizeof(eeprom_glucose_password)},
+    {"cgm_refresh", SETTING_TYPE_U8, &eeprom_glucose_refresh, 0},
+    {"cgm_validity", SETTING_TYPE_U16, &glucose_validity_duration, 0},
+    {"sec_time", SETTING_TYPE_U8, &eeprom_sec_time, 0},
+    {"sec_cgm", SETTING_TYPE_U8, &eeprom_sec_cgm, 0},
+    {"cgm_unit", SETTING_TYPE_U8, &eeprom_glucose_unit, 0},
+    {"pwm_frequency", SETTING_TYPE_U32, &eeprom_pwm_frequency, 0},
+    {"max_power", SETTING_TYPE_U16, &eeprom_max_power, 0},
+    {"poh", SETTING_TYPE_U32, &eeprom_poh, 0},
 };
 #define SETTINGS_COUNT (sizeof(settings_table) / sizeof(settings_table[0]))
 
@@ -188,19 +189,19 @@ static esp_err_t nvs_read_setting(nvs_handle_t handle, const nvs_setting_t *sett
   size_t size = setting->size;
   switch (setting->type)
   {
-  case NVS_TYPE_STR:
+  case SETTING_TYPE_STR:
     err = nvs_get_str(handle, setting->key, (char *)setting->ptr, &size);
     break;
-  case NVS_TYPE_U8:
+  case SETTING_TYPE_U8:
     err = nvs_get_u8(handle, setting->key, (uint8_t *)setting->ptr);
     break;
-  case NVS_TYPE_U16:
+  case SETTING_TYPE_U16:
     err = nvs_get_u16(handle, setting->key, (uint16_t *)setting->ptr);
     break;
-  case NVS_TYPE_U32:
+  case SETTING_TYPE_U32:
     err = nvs_get_u32(handle, setting->key, (uint32_t *)setting->ptr);
     break;
-  case NVS_TYPE_BLOB:
+  case SETTING_TYPE_BLOB:
     err = nvs_get_blob(handle, setting->key, setting->ptr, &size);
     break;
   }
@@ -212,19 +213,19 @@ static esp_err_t nvs_write_setting(nvs_handle_t handle, const nvs_setting_t *set
   esp_err_t err = ESP_OK;
   switch (setting->type)
   {
-  case NVS_TYPE_STR:
+  case SETTING_TYPE_STR:
     err = nvs_set_str(handle, setting->key, (const char *)setting->ptr);
     break;
-  case NVS_TYPE_U8:
+  case SETTING_TYPE_U8:
     err = nvs_set_u8(handle, setting->key, *(uint8_t *)setting->ptr);
     break;
-  case NVS_TYPE_U16:
+  case SETTING_TYPE_U16:
     err = nvs_set_u16(handle, setting->key, *(uint16_t *)setting->ptr);
     break;
-  case NVS_TYPE_U32:
+  case SETTING_TYPE_U32:
     err = nvs_set_u32(handle, setting->key, *(uint32_t *)setting->ptr);
     break;
-  case NVS_TYPE_BLOB:
+  case SETTING_TYPE_BLOB:
     err = nvs_set_blob(handle, setting->key, setting->ptr, setting->size);
     break;
   }
@@ -603,7 +604,7 @@ void startup_read_eeprom(void)
 
       err = nvs_read_setting(nvs_handle, s);
 
-      if (err == ESP_ERR_NVS_INVALID_LENGTH && s->type == NVS_TYPE_U32)
+      if (err == ESP_ERR_NVS_INVALID_LENGTH && s->type == SETTING_TYPE_U32)
       {
         /* Special case for pwm_frequency migration */
         uint16_t val16;

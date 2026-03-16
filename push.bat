@@ -1,5 +1,4 @@
 @echo off
-pushd
 cd \source\frixos
 date /t
 time /t
@@ -12,4 +11,4 @@ copy ..\files.txt .\
 echo re-created files.txt
 copy * c:\source\frixos-web\www\%1\ /b/y > nul
 echo copied spiffs
-popd
+cd ..
