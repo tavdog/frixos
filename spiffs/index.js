@@ -1244,13 +1244,13 @@ function handleFormSubmit(e, formId) {
         if (dimDisableEl && addIfChanged(formData, 'p22', dimDisableEl.checked ? 1 : 0, window.settings.p22)) changedCount++;
         
         // Handle brightness array - check if any element changed
+        // Backend expects exactly 2 elements [day, night], range 1-100. Do not send a third element.
         const brightnessLED0El = getFieldInForm('brightness_LED0');
         const brightnessLED1El = getFieldInForm('brightness_LED1');
         if (brightnessLED0El && brightnessLED1El) {
             const newBrightness = [
-                parseInt(brightnessLED0El.value) || 0,
-                parseInt(brightnessLED1El.value) || 0,
-                0 // Placeholder for "Auto"
+                parseInt(brightnessLED0El.value) || 100,
+                parseInt(brightnessLED1El.value) || 30
             ];
             if (hasValueChanged(newBrightness, window.settings.p23)) {
                 formData.p23 = newBrightness;

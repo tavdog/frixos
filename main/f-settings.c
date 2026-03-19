@@ -1004,20 +1004,23 @@ static bool validate_json_params(cJSON *root, char *err_buf, size_t err_size)
     if ((item = cJSON_GetObjectItem(root, "p47")) && cJSON_IsNumber(item))
         CHECK_RANGE("wifi_end", item->valueint, 0, 23);
 
-    /* p23 brightness_LED array */
+    /* p23 brightness_LED array - exactly 2 elements [day, night], each 1-100 */
     if ((item = cJSON_GetObjectItem(root, "p23")) && cJSON_IsArray(item))
     {
         int arr_size = cJSON_GetArraySize(item);
-        if (arr_size > 3)
+        if (arr_size > 2)
         {
-            snprintf(err_buf, err_size, "Invalid brightness_LED: array size %d exceeds max 3", arr_size);
+            snprintf(err_buf, err_size, "Invalid brightness_LED: array size %d exceeds max 2", arr_size);
             return false;
         }
-        for (int i = 0; i < arr_size && i < 3; i++)
+        for (int i = 0; i < arr_size; i++)
         {
             cJSON *elem = cJSON_GetArrayItem(item, i);
             if (cJSON_IsNumber(elem))
-                CHECK_RANGE("brightness_LED", elem->valueint, 1, 100);
+            {
+                int val = (int)(elem->valuedouble + 0.5); /* works for both int and float JSON numbers */
+                CHECK_RANGE("brightness_LED", val, 1, 100);
+            }
         }
     }
 
@@ -1463,16 +1466,17 @@ esp_err_t settings_post_handler(httpd_req_t *req)
         }
     }
 
-    // Process LED brightness settings
+    // Process LED brightness settings (eeprom_brightness_LED has exactly 2 elements)
     cJSON *brightness_array = cJSON_GetObjectItem(root, "p23");
     if (cJSON_IsArray(brightness_array))
     {
-        for (int i = 0; i < cJSON_GetArraySize(brightness_array) && i < 3; i++)
+        for (int i = 0; i < cJSON_GetArraySize(brightness_array) && i < 2; i++)
         {
             cJSON *brightness_item = cJSON_GetArrayItem(brightness_array, i);
             if (cJSON_IsNumber(brightness_item))
             {
-                eeprom_brightness_LED[i] = (uint8_t)brightness_item->valueint;
+                int val = (int)(brightness_item->valuedouble + 0.5);
+                eeprom_brightness_LED[i] = (uint8_t)val;
             }
         }
     }
