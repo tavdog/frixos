@@ -6,7 +6,7 @@
     ],
     "idf.portWin": "COM6",
     "idf.toolsPathWin": "c:\\Espressif\\tools",
-    "idf.flashType": "UART",
+    "idf.flashType": "JTAG",
     "files.associations": {
         "sdkconfig.h": "c",
         "semphr.h": "c",
@@ -30,5 +30,5 @@
         "lv_image_decoder.h": "c"
     },
     "idf.pythonInstallPath": "c:\\Espressif\\tools\\tools\\idf-python\\3.11.2\\python.exe",
-    "idf.currentSetup": "c:\\Espressif\\frameworks\\esp-idf-v5.4"
+    "idf.currentSetup": "/Users/tavis/esp/v5.5/esp-idf"
 }
