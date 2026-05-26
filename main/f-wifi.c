@@ -1208,12 +1208,14 @@ static void metno_logs_verbose(metno_log_saved_t *s)
     s->transport_base  = esp_log_level_get("transport_base");
     s->http_client     = esp_log_level_get("HTTP_CLIENT");
     s->transport_ssl   = esp_log_level_get("transport_ssl");
+    /* Disabled to reduce log noise
     esp_log_level_set("mbedtls",         ESP_LOG_VERBOSE);
     esp_log_level_set("esp-tls",         ESP_LOG_VERBOSE);
     esp_log_level_set("esp-tls-mbedtls", ESP_LOG_VERBOSE);
     esp_log_level_set("transport_base",  ESP_LOG_VERBOSE);
     esp_log_level_set("HTTP_CLIENT",     ESP_LOG_VERBOSE);
     esp_log_level_set("transport_ssl",   ESP_LOG_VERBOSE);
+    */
 }
 
 static void metno_logs_restore(const metno_log_saved_t *s)

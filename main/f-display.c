@@ -300,7 +300,7 @@ esp_err_t startup_lvgl(void)
   /* Initialize LVGL port - this will create the LVGL task and call lv_init() internally */
   const lvgl_port_cfg_t lvgl_cfg = {
       .task_priority = 8,       /* LVGL task priority - increased from 1 */
-      .task_stack = 8192+2048,       /* LVGL task stack size SUPER LARGE STACK */
+      .task_stack = 8192+2048,  /* Original stack size */
       .task_affinity = 1,       /* LVGL task pinned to core (core 1 for our display tasks, -1 would be no affinity) */
       .task_max_sleep_ms = 100, /* 100ms */
       .timer_period_ms = 5      /* Reduced timer period for smoother animations */
@@ -567,7 +567,7 @@ int check_file(char *filename)
   }
 }
 
-void find_file(char *filename, char len, char *theme, char *item)
+void find_file(char *filename, size_t len, char *theme, char *item)
 {
 
   // look for BMP files first, then JPG

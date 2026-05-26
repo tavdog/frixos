@@ -676,8 +676,8 @@ void startup_read_eeprom(void)
     // Close NVS
     nvs_close(nvs_handle);
 
-    ESP_LOG_WEB(ESP_LOG_INFO, TAG, "HTTPD_MAX_REQ_HDR_LEN=%u",
-                (unsigned)HTTPD_MAX_REQ_HDR_LEN);
+    ESP_LOG_WEB(ESP_LOG_INFO, TAG, "CONFIG_HTTPD_MAX_REQ_HDR_LEN=%u",
+                (unsigned)CONFIG_HTTPD_MAX_REQ_HDR_LEN);
 
     // 5. Log final parameters
     ESP_LOG_WEB(ESP_LOG_INFO, TAG,
@@ -915,7 +915,7 @@ void startup_threads()
   xTaskCreatePinnedToCore(
       display_task,   /* Task function. */
       "display_task", /* name of task, from f-display.c */
-      8960,           /* Stack size of task (reduced proportionally) */
+      8960,           /* Stack size of task (original) */
       NULL,           /* parameter of the task */
       3,              /* priority of the task */
       NULL,           /* Task handle to keep track of created task */

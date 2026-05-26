@@ -3,6 +3,6 @@ build/
 sdkconfig
 sdkconfig.old
 main/include/config.h
-
+.cache/**
 # Environment file with API keys (copy from env.example)
 .env
