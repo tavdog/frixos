@@ -298,7 +298,7 @@ void ota_update_timer_callback(void *arg)
     ESP_LOG_WEB(ESP_LOG_VERBOSE, TAG, "OTA Update Timer");
 
     // Trigger the OTA update thread
-    f_ota_trigger_update();
+    // f_ota_trigger_update(); // Disabled
 
     // Restart the timer for the next check interval
     if (ota_update_timer != NULL)
@@ -672,7 +672,7 @@ void wifi_task(void *pvParameters)
     wifi_task_handle = xTaskGetCurrentTaskHandle();
 
     // Start the OTA update thread
-    f_ota_start_update_thread();
+    // f_ota_start_update_thread(); // Disabled to save memory from the start
 
     // Register event handlers for WiFi events
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));

@@ -830,6 +830,10 @@ static void ota_update_task(void *pvParameters)
 
 void f_ota_start_update_thread(void)
 {
+    // OTA task disabled to save memory
+    ESP_LOG_WEB(ESP_LOG_INFO, TAG, "OTA update task is disabled");
+    return;
+    
     // Create OTA update semaphore
     ota_update_semaphore = xSemaphoreCreateBinary();
     if (ota_update_semaphore == NULL)
